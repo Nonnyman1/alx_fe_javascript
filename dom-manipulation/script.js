@@ -6,12 +6,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const newQuoteCategory = document.getElementById('newQuoteCategory');
     const exportQuotesBtn = document.getElementById('exportQuotes');
     const importFile = document.getElementById('importFile');
+    const categoryFilter = document.getElementById('categoryFilter');
 
     let quotes = JSON.parse(localStorage.getItem('quotes')) || [
         { text: "The greatest glory in living lies not in never falling, but in rising every time we fall.", category: "Inspirational" },
         { text: "The way to get started is to quit talking and begin doing.", category: "Motivational" },
         { text: "Your time is limited, don't waste it living someone else's life.", category: "Life" },
     ];
+
+    function saveQuotes() {
+        localStorage.setItem('quotes', JSON.stringify(quotes));
+    }
+
+    function populateCategories() {
+        const categories = [...new Set(quotes.map(quote => quote.category))];
+        categoryFilter.innerHTML = '<option value="all">All Categories</option>';
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            categoryFilter.appendChild(option);
+        });
+    }
+
+    function filterQuotes() {
+        const selectedCategory = categoryFilter.value;
+        const filteredQuotes = selectedCategory === 'all'
+            ? quotes
+            : quotes.filter(quote => quote.category === selectedCategory);
+        displayQuotes(filteredQuotes);
+        localStorage.setItem('selectedCategory', selectedCategory);
+    }
+
+    function displayQuotes(quotesToDisplay) {
+        quoteDisplay.innerHTML = '';
+        quotesToDisplay.forEach(quote => {
+            const p = document.createElement('p');
+            p.textContent = `"${quote.text}" - ${quote.category}`;
+            quoteDisplay.appendChild(p);
+        });
+    }
 
     function showRandomQuote() {
         const randomIndex = Math.floor(Math.random() * quotes.length);
@@ -26,10 +60,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (quoteText && quoteCategory) {
             quotes.push({ text: quoteText, category: quoteCategory });
-            localStorage.setItem('quotes', JSON.stringify(quotes));
+            saveQuotes();
             newQuoteText.value = '';
             newQuoteCategory.value = '';
             alert('Quote added successfully!');
+            populateCategories();
+            filterQuotes();
         } else {
             alert('Please enter both quote text and category.');
         }
@@ -52,8 +88,10 @@ document.addEventListener('DOMContentLoaded', () => {
         fileReader.onload = function(event) {
             const importedQuotes = JSON.parse(event.target.result);
             quotes.push(...importedQuotes);
-            localStorage.setItem('quotes', JSON.stringify(quotes));
+            saveQuotes();
             alert('Quotes imported successfully!');
+            populateCategories();
+            filterQuotes();
         };
         fileReader.readAsText(event.target.files[0]);
     }
@@ -63,11 +101,19 @@ document.addEventListener('DOMContentLoaded', () => {
     exportQuotesBtn.addEventListener('click', exportQuotes);
     importFile.addEventListener('change', importFromJsonFile);
 
-    // Initial random quote display or load last viewed quote from session
+    populateCategories();
+    filterQuotes();
+
     const lastQuote = JSON.parse(sessionStorage.getItem('lastQuote'));
     if (lastQuote) {
         quoteDisplay.textContent = `"${lastQuote.text}" - ${lastQuote.category}`;
     } else {
         showRandomQuote();
+    }
+
+    const savedCategory = localStorage.getItem('selectedCategory');
+    if (savedCategory) {
+        categoryFilter.value = savedCategory;
+        filterQuotes();
     }
 });
