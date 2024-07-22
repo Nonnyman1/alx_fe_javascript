@@ -7,12 +7,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportQuotesBtn = document.getElementById('exportQuotes');
     const importFile = document.getElementById('importFile');
     const categoryFilter = document.getElementById('categoryFilter');
+    const notification = document.createElement('div');
 
-    let quotes = JSON.parse(localStorage.getItem('quotes')) || [
-        { text: "The greatest glory in living lies not in never falling, but in rising every time we fall.", category: "Inspirational" },
-        { text: "The way to get started is to quit talking and begin doing.", category: "Motivational" },
-        { text: "Your time is limited, don't waste it living someone else's life.", category: "Life" },
-    ];
+    notification.id = 'notification';
+    notification.style.display = 'none';
+    notification.style.position = 'fixed';
+    notification.style.top = '10px';
+    notification.style.right = '10px';
+    notification.style.padding = '10px';
+    notification.style.backgroundColor = '#ff9800';
+    notification.style.color = '#fff';
+    notification.style.borderRadius = '5px';
+    document.body.appendChild(notification);
+
+    let quotes = JSON.parse(localStorage.getItem('quotes')) || [];
+
+    const serverQuotesUrl = 'https://jsonplaceholder.typicode.com/posts'; // Replace with actual server URL
 
     function saveQuotes() {
         localStorage.setItem('quotes', JSON.stringify(quotes));
@@ -96,6 +106,33 @@ document.addEventListener('DOMContentLoaded', () => {
         fileReader.readAsText(event.target.files[0]);
     }
 
+    async function fetchServerQuotes() {
+        try {
+            const response = await fetch(serverQuotesUrl);
+            const serverQuotes = await response.json();
+            return serverQuotes.map(q => ({ text: q.title, category: 'Server' })); // Adjust as per actual server response
+        } catch (error) {
+            console.error('Error fetching server quotes:', error);
+            return [];
+        }
+    }
+
+    async function syncWithServer() {
+        const serverQuotes = await fetchServerQuotes();
+        const newQuotes = serverQuotes.filter(sq => !quotes.some(lq => lq.text === sq.text));
+        if (newQuotes.length > 0) {
+            quotes.push(...newQuotes);
+            saveQuotes();
+            notification.textContent = 'New quotes have been added from the server!';
+            notification.style.display = 'block';
+            setTimeout(() => {
+                notification.style.display = 'none';
+            }, 5000);
+            populateCategories();
+            filterQuotes();
+        }
+    }
+
     newQuoteBtn.addEventListener('click', showRandomQuote);
     addQuoteBtn.addEventListener('click', addQuote);
     exportQuotesBtn.addEventListener('click', exportQuotes);
@@ -116,4 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         categoryFilter.value = savedCategory;
         filterQuotes();
     }
+
+    syncWithServer();
+    setInterval(syncWithServer, 20000); // Sync with server every 20 seconds
 });
